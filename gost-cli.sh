@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-APP="gost-tui"
-PREFIX="gost-tui"
+APP="gost-cli"
+PREFIX="gost-cli"
 REPO_API="https://api.github.com/repos/ginuerzh/gost/releases/latest"
 GCI_CMD="/usr/local/bin/gci"
 COLOR_OK=$'\033[0;32m'
@@ -10,8 +10,8 @@ COLOR_WARN=$'\033[1;33m'
 COLOR_ERR=$'\033[0;31m'
 COLOR_OFF=$'\033[0m'
 
-GOST_TUI_HOME="/root/.gost-tui"
-GOST_BIN="$GOST_TUI_HOME/bin/gost"
+GOST_CLI_HOME="/root/.gost-cli"
+GOST_BIN="$GOST_CLI_HOME/bin/gost"
 
 die() { echo "${COLOR_ERR}错误:${COLOR_OFF} $*" >&2; exit 1; }
 warn() { echo "${COLOR_WARN}提示:${COLOR_OFF} $*" >&2; }
@@ -133,7 +133,7 @@ check_debian() {
 }
 
 init_dirs() {
-  mkdir -p "$GOST_TUI_HOME/bin" "$GOST_TUI_HOME/services" "$GOST_TUI_HOME/units" "$GOST_TUI_HOME/tmp"
+  mkdir -p "$GOST_CLI_HOME/bin" "$GOST_CLI_HOME/services" "$GOST_CLI_HOME/units" "$GOST_CLI_HOME/tmp"
 }
 
 script_path() {
@@ -232,7 +232,7 @@ find_existing_gost() {
 
 store_gost() {
   local src="$1"
-  mkdir -p "$GOST_TUI_HOME/bin"
+  mkdir -p "$GOST_CLI_HOME/bin"
   cp "$src" "$GOST_BIN"
   chmod 0755 "$GOST_BIN"
 }
@@ -248,7 +248,7 @@ download_gost() {
     url=$(printf '%s\n' "$json" | grep -Eo 'https://[^"]+gost-linux-'"$arch"'-[^"]+\.gz' | head -n 1 || true)
   fi
   [[ -n "$url" ]] || die "没有找到 linux_${arch} 的 gost 发布包。"
-  tmpdir=$(mktemp -d "$GOST_TUI_HOME/tmp/download.XXXXXX")
+  tmpdir=$(mktemp -d "$GOST_CLI_HOME/tmp/download.XXXXXX")
   tmp="$tmpdir/gost.pkg"
   echo "下载: $url"
   download_file "$url" "$tmp" || die "下载 gost 失败。"
@@ -291,11 +291,11 @@ unit_name() {
 }
 
 meta_file() {
-  printf '%s/services/%s.meta\n' "$GOST_TUI_HOME" "$1"
+  printf '%s/services/%s.meta\n' "$GOST_CLI_HOME" "$1"
 }
 
 run_file() {
-  printf '%s/services/%s.run.sh\n' "$GOST_TUI_HOME" "$1"
+  printf '%s/services/%s.run.sh\n' "$GOST_CLI_HOME" "$1"
 }
 
 unit_file() {
@@ -333,7 +333,7 @@ write_service_files() {
     echo '[Service]'
     echo 'Type=simple'
     echo 'User=root'
-    printf 'WorkingDirectory=%s\n' "$GOST_TUI_HOME"
+    printf 'WorkingDirectory=%s\n' "$GOST_CLI_HOME"
     printf 'ExecStart=%s\n' "$run"
     echo 'Restart=always'
     echo 'RestartSec=3'
@@ -342,7 +342,7 @@ write_service_files() {
     echo '[Install]'
     echo 'WantedBy=multi-user.target'
   } >"$unit"
-  cp "$unit" "$GOST_TUI_HOME/units/$(unit_name "$name")"
+  cp "$unit" "$GOST_CLI_HOME/units/$(unit_name "$name")"
   {
     printf 'NAME=%q\n' "$name"
     printf 'ARGS=%q\n' "$args"
@@ -371,7 +371,7 @@ refresh_existing_units() {
 service_names() {
   local f
   shopt -s nullglob
-  for f in "$GOST_TUI_HOME/services/"*.meta; do
+  for f in "$GOST_CLI_HOME/services/"*.meta; do
     basename "$f" .meta
   done
   shopt -u nullglob
@@ -633,7 +633,7 @@ delete_service_by_name() {
   ask_yes "删除确认" "确认删除 $unit？这会停止服务、取消自启并删除对应 unit/run/meta 文件。" || return
   systemctl stop "$unit" 2>/dev/null || true
   systemctl disable "$unit" 2>/dev/null || true
-  rm -f "$(unit_file "$name")" "$(run_file "$name")" "$(meta_file "$name")" "$GOST_TUI_HOME/units/$unit"
+  rm -f "$(unit_file "$name")" "$(run_file "$name")" "$(meta_file "$name")" "$GOST_CLI_HOME/units/$unit"
   systemctl daemon-reload
   systemctl reset-failed "$unit" 2>/dev/null || true
   msg "删除完成" "已删除: $unit"
@@ -653,7 +653,7 @@ main_menu() {
   while true; do
     ui_print ""
     ui_print "快捷命令: gci 可以快速打开本管理脚本。"
-    choice=$(menu_box "$APP" "数据目录: $GOST_TUI_HOME" \
+    choice=$(menu_box "$APP" "数据目录: $GOST_CLI_HOME" \
       "1" "初始化或修复 gost" \
       "2" "创建转发服务" \
       "3" "管理已有服务" \
